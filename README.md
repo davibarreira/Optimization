@@ -1,2 +1,3 @@
 # Optimization
-Repository for Optimization algorithms implementation
+
+This repository is for Optimization algorithms implementation tests. It serves as a personal sandbox.
