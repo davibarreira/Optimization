@@ -265,3 +265,59 @@ On the linear convergence of the circumcentered-reflection method. Oper. Res. Le
         end
         return CC
     end
+
+
+
+"""
+SimplexFromBFS(c,A,b, initial_bfs; max_iterations=100, index_bfs=[0], index_nfs=[0])
+Starting from a basic feasible point, uses the Simplex
+algorithm to minimize the LP problem in the format:
+       min  dot(c, x)
+subject to A x = b
+             0 ≤ x
+"""
+function SimplexFromBFS(c,A,b,
+        initial_bfs;max_iterations=100,index_bfs=[0],index_nfs = [0])
+    c = -c
+    # Initial setup
+    e  = 10^-7
+    B  = findall(initial_bfs .> 0+e)
+    N  = findall(initial_bfs .<= 0+e)
+    if size(A[:,B])[1] != size(A[:,B])[2]
+        B = index_bfs
+        N = index_nfs
+    end
+    xn = initial_bfs[N]; xb = initial_bfs[B];
+    
+    # Simplex pivoting iteration
+    for i = 1:max_iterations
+        Ab = A[:,B]; An = A[:,N]; cb = c[B]; cn = c[N]
+        p  = inv(Ab)*b
+        Q  = -inv(Ab)*An
+        r  = (cb'*Q + cn')'
+        if all(r.<= 0)
+            x_final = vcat(hcat(B,p),hcat(N,zeros(length(N))))
+            x_final = x_final[sortperm(x_final[:,1]),:]
+            return x_final
+        end
+        zo = cb'*p
+#         z  = zo + r'*xn
+        index_in =findmax(r)[2]
+        x_in = N[index_in]
+        if any(Q[:,index_in] .< 0)
+            coef_entering = -p./Q[:,index_in] 
+            q_neg_index   = findall(Q[:,index_in] .< 0)
+            index_out     = findfirst(coef_entering .== findmin(coef_entering[q_neg_index])[1])
+            x_out         = B[index_out]
+            B[index_out]  = x_in
+            N[index_in]   = x_out
+        else
+            
+            error("Unbounded")
+        end
+        println(x_in,"   ",x_out)
+    end
+    x_final = vcat(hcat(B,p),hcat(N,zeros(length(N))))
+    x_final = x_final[sortperm(x_final[:,1]),:]
+    return x_final
+end
