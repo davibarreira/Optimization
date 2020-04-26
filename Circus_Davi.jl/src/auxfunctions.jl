@@ -298,7 +298,7 @@ function SimplexFromBFS(c,A,b,
         if all(r.<= 0)
             x_final = vcat(hcat(B,p),hcat(N,zeros(length(N))))
             x_final = x_final[sortperm(x_final[:,1]),:]
-            return x_final
+            return x_final[:,2]
         end
         zo = cb'*p
 #         z  = zo + r'*xn
@@ -322,6 +322,30 @@ function SimplexFromBFS(c,A,b,
 end
 
 """
+variables_relation(varsplit,n)
+Returns a dictionary with the variables that are split.
+e.g: 1 => [1,2], means that x1 is split into y1 and y2, such
+that x1 = y1 - y2.
+Inputs:
+e.g: varsplit = [1,2,4] (Vector of variables that were split when
+turning the problem from the Circus formato to Simplex Standard Format)
+e.g: n = 3 (Number of varibales in the Circus format)
+"""
+function variables_relation(varsplit,n)
+    simplex_to_circus = Dict()
+    k = 0
+    for i in 1:n
+        if i in varsplit
+            simplex_to_circus[i] = [i+k,i+1+k]
+            k += 1 
+        else
+            simplex_to_circus[i] = [i]
+        end
+    end
+    return simplex_to_circus
+end
+
+"""
 simplex_format(c, A, b)
 Adjust the format from
            min  dot(c, x)
@@ -331,6 +355,7 @@ To the standard Simplex fomat which is
     subject to  A x = b
 """
 function simplex_format(c,A,b)
+    n = size(c)[1]
     row_remove = []
     var_stay   = []
     for i = 1:size(A)[1]
@@ -380,46 +405,24 @@ function simplex_format(c,A,b)
             aux = aux + 1
         end
     end
+    var_relation = variables_relation(var_split,n)
     
-    return c,A,b,var_split
+    return c,A,b,var_relation
 end
 
-"""
-variables_relation(varsplit,n)
-Returns a dictionary with the variables that are split.
-e.g: 1 => [1,2], means that x1 is split into y1 and y2, such
-that x1 = y1 - y2.
-Inputs:
-e.g: varsplit = [1,2,4] (Vector of variables that were split when
-turning the problem from the Circus formato to Simplex Standard Format)
-e.g: n = 3 (Number of varibales in the Circus format)
-"""
-function variables_relation(varsplit,n)
-    simplex_to_circus = Dict()
-    k = 0
-    for i in 1:n
-        if i in varsplit
-            simplex_to_circus[i] = [i+k,i+1+k]
-            k += 1 
-        else
-            simplex_to_circus[i] = [i]
-        end
-    end
-    return simplex_to_circus
-end
 
 
 """
 variable_simplex_to_circus(simplex_to_circus, x_simplex)
 Transforms variable from Simplex format to Circus format.
 Inputs:
-simplex_to_circus = Dictionary obtained from variables_relation() function.
+var_relation = Dictionary obtained from variables_relation() function.
 x_simplex         = Variable in the Simplex format
 """
-function variable_simplex_to_circus(simplex_to_circus, x_simplex)
-    n = size(collect(keys(simplex_to_circus)))[1]
+function variable_simplex_to_circus(var_relation, x_simplex)
+    n = size(collect(keys(var_relation)))[1]
     x_circus = zeros(n)
-    for (k,i) in simplex_to_circus
+    for (k,i) in var_relation
         if size(i)[1] > 1
             x_circus[k] = x_simplex[i[1]] - x_simplex[i[2]]
         else
