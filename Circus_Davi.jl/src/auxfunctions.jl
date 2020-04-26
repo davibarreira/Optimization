@@ -320,3 +320,182 @@ function SimplexFromBFS(c,A,b,
     x_final = x_final[sortperm(x_final[:,1]),:]
     return x_final[:,2]
 end
+
+"""
+simplex_format(c, A, b)
+Adjust the format from
+           min  dot(c, x)
+    subject to  A x ≦ b
+To the standard Simplex fomat which is
+           min  dot(c, x)
+    subject to  A x = b
+"""
+function simplex_format(c,A,b)
+    row_remove = []
+    var_stay   = []
+    for i = 1:size(A)[1]
+        present_variables = .!(A[i,:].≈0)
+        if sum(present_variables) == 1
+            if all(A[i,present_variables].<0) && b[i].≈0
+                push!(row_remove,i)
+                push!(var_stay,findmax(present_variables)[2])
+            elseif all(sign.(A[i,present_variables]).!=sign(b[i]))
+                push!(row_remove,i)
+                push!(var_stay,findmax(present_variables)[2])
+            else
+                v = zeros(size(A)[1])
+                v[i] = 1
+                A = hcat(A,v)
+                c = vcat(c,0)
+                push!(var_stay,findmax(present_variables)[2])
+                push!(var_stay,size(c)[1])
+            end
+        else
+            v = zeros(size(A)[1])
+            v[i] = 1
+            A = hcat(A,v)
+            c = vcat(c,0)
+            push!(var_stay,size(c)[1])
+        end
+    end
+
+    A = A[setdiff(1:end, row_remove),:]
+    b = b[setdiff(1:end, row_remove),:]
+    var_split = setdiff(1:size(c)[1],var_stay)
+    aux = 0
+    for i in var_split
+        if i == size(A[2])
+            A = hcat(A,-A[:,i])
+            c = hcat(c,-c[:,i])
+        else
+            A_ = A[:,1:i+aux]
+            A_ = hcat(A_,-A[:,i+aux])
+            _A = A[:,i+1+aux:end]
+            A  = hcat(A_,_A)
+
+            c_ = c[1:i+aux]
+            c_ = vcat(c_,-c[i+aux])
+            _c = c[i+1+aux:end]
+            c  = vcat(c_,_c)
+            aux = aux + 1
+        end
+    end
+    
+    return c,A,b,var_split
+end
+
+"""
+variables_relation(varsplit,n)
+Returns a dictionary with the variables that are split.
+e.g: 1 => [1,2], means that x1 is split into y1 and y2, such
+that x1 = y1 - y2.
+Inputs:
+e.g: varsplit = [1,2,4] (Vector of variables that were split when
+turning the problem from the Circus formato to Simplex Standard Format)
+e.g: n = 3 (Number of varibales in the Circus format)
+"""
+function variables_relation(varsplit,n)
+    simplex_to_circus = Dict()
+    k = 0
+    for i in 1:n
+        if i in varsplit
+            simplex_to_circus[i] = [i+k,i+1+k]
+            k += 1 
+        else
+            simplex_to_circus[i] = [i]
+        end
+    end
+    return simplex_to_circus
+end
+
+
+"""
+variable_simplex_to_circus(simplex_to_circus, x_simplex)
+Transforms variable from Simplex format to Circus format.
+Inputs:
+simplex_to_circus = Dictionary obtained from variables_relation() function.
+x_simplex         = Variable in the Simplex format
+"""
+function variable_simplex_to_circus(simplex_to_circus, x_simplex)
+    n = size(collect(keys(simplex_to_circus)))[1]
+    x_circus = zeros(n)
+    for (k,i) in simplex_to_circus
+        if size(i)[1] > 1
+            x_circus[k] = x_simplex[i[1]] - x_simplex[i[2]]
+        else
+            x_circus[k] = x_simplex[i[1]]
+        end
+    end
+    return x_circus
+end
+
+"""
+variable_circus_to_simplex(simplex_to_circus, x_circus,
+    c_simplex,A_simplex,b_simplex)
+Transforms variable from Circus format to Simplex format.
+Inputs:
+simplex_to_circus = Dictionary obtained from variables_relation() function.
+x_circus          = Variable in the Circus format
+
+c_simplex, A_simplex, b_simplex are from the standard Simplex fomat which is
+           min  dot(c_simplex, x)
+    subject to  A_simplex x = b_simplex
+"""
+function variable_circus_to_simplex(simplex_to_circus,x_circus,
+        c_simplex,A_simplex,b_simplex)
+    x_simplex = zeros(size(c_simplex)[1])
+    n_simplex = 0
+    for (k,i) in simplex_to_circus
+        if size(i)[1] > 1
+            n_simplex+=2
+            if x_circus[k] < 0
+                x_simplex[i[1]] = 0
+                x_simplex[i[2]] = -x_circus[k]
+            else
+                x_simplex[i[1]] = x_circus[k]
+                x_simplex[i[2]] = 0
+            end
+        else
+            n_simplex+=1
+            x_simplex[i[1]] = x_circus[k]
+        end
+    end
+
+    if n_simplex < size(c_simplex)[1]
+        x_simplex[n_simplex+1:size(cs)[1]] = A_simplex*x_simplex - b_simplex
+    end
+    return x_simplex
+end
+
+
+"""
+phaseI_simplex_problem(A,b)
+Transforms the standard Simplex fomat which is
+           min  dot(c, x)
+    subject to  A x = b
+Into an auxiliary problem to find a Initial Basic Feasible Solution.
+The auxiliary problem is 
+           min  x_{n+1} + ... + x_{n+m}
+    subject to  A' x' = b'
+The algorithm appends an Identity matrix of dimensions mxm to A, where
+m is the number of rows of matrix A. The x' is the same x with m new variables
+appended. Also, if a row b_i < 0, then b'_i = - b_i and A'_i = [-A_i I].
+"""
+function phaseI_simplex_problem(A,b)
+    Api = copy(A)
+    bpi = copy(b)
+    for i = 1:size(Api)[1]
+        if bpi[i]<0
+            bpi[i] = -bpi[i]
+            Api[i,:] = -Api[i,:]
+        end
+    end
+    Api = hcat(Api,Matrix{Float64}(I, size(Api)[1], size(Api)[1]))
+    cpi = zeros(size(Api)[2])
+    cpi[end-size(Api)[1]+1:end] .= 1
+    x = zeros(size(Api)[2])
+    x[end-size(Api)[1]+1:end] = bpi
+    index_bfs = collect(size(Api)[2] - size(Api)[1]+1:size(Api)[2])
+    index_nfs = collect(1:size(Api)[2] - size(Api)[1])
+    return cpi,Api,bpi,x,index_bfs,index_nfs
+end
