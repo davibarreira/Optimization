@@ -295,7 +295,7 @@ function SimplexFromBFS(c,A,b,
         p  = inv(Ab)*b
         Q  = -inv(Ab)*An
         r  = (cb'*Q + cn')'
-        if all(r.<= 0)
+        if all(r.<= 0+e)
             x_final = vcat(hcat(B,p),hcat(N,zeros(length(N))))
             x_final = x_final[sortperm(x_final[:,1]),:]
             return x_final[:,2]
