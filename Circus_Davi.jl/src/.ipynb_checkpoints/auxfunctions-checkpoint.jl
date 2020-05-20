@@ -1,6 +1,7 @@
 using LinearAlgebra
 using SparseArrays
 using MathProgBase
+
 using Clp
 
 """
@@ -288,7 +289,7 @@ function SimplexFromBFS(c,A,b,
         N = index_nfs
     end
     xn = initial_bfs[N]; xb = initial_bfs[B];
-    
+    p  = 0
     # Simplex pivoting iteration
     for i = 1:max_iterations
         Ab = A[:,B]; An = A[:,N]; cb = c[B]; cn = c[N]
