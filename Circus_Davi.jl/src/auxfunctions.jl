@@ -76,13 +76,13 @@ Refine solution when near the LP solution
 
 """
 function refinesolution(x, A, b, c, num_var,atol=1e-8)
-    index_active = findall(b - A*x .<  1e-8)
+    index_active = findall(b - A*x .<  atol)
     num_active = length(index_active)
     iter = 0
     if iszero(num_active)
         alpha = ratiotest(x,A,b,-c)
         x = x - alpha*c
-        index_active = findall(b - A*x.<= 1e-8)
+        index_active = findall(b - A*x.<= atol)
         num_active = length(index_active)
     end
     while num_active < num_var && iter <= num_var
@@ -543,6 +543,7 @@ Given a point x, it checks whether this  point is KKT. The problem
 must be in the standard Circus format (e.i: Ax<=b).
 Note that this does not work if the vertex is degenerate (more active restrictions
 than dimensions for the variable x).
+Returns 1 if x is optimal, 0 if not optimal, -1 if the vertex is degenerate.
 """
 function checkKKT(c,A,b,x)
     c = -c
@@ -551,6 +552,10 @@ function checkKKT(c,A,b,x)
     I  = findall(b-A*x.<= 0+e)
     N  = findall(b-A*x .> 0+e)
     Ai = A[I,:]; An = A[N,:];
+    if size(Ai)[1] != size(Ai)[2]
+        println("Degenerate vertex")
+        return -1
+    end
     μ  = inv(Ai')*c
     if all(μ .>= 0-e)
         return 1
