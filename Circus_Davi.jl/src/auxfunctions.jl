@@ -503,3 +503,60 @@ function phaseI_simplex_problem(A,b)
     index_nfs = collect(1:size(Api)[2] - size(Api)[1])
     return cpi,Api,bpi,x,index_bfs,index_nfs
 end
+
+"""
+check_optimality_simplex(c,A,b,x;index_bfs=[],index_nfs=[])
+Given a point x, it checks whether this  point is optimal. The problem
+must be in the standard Simplex format (e.i: Ax=b, x>=0).
+Note that this does not work if the vertex is degenerate (more active restrictions
+than dimensions for the variable x).
+"""
+function check_optimality_simplex(c,A,b,x;index_bfs=[],index_nfs=[])
+    c = -c
+    # Initial setup
+    initial_bfs = x
+    e  = 10^-7
+    if size(index_bfs)[1]>0
+        B = index_bfs
+        N = index_nfs
+    else
+        B  = findall(initial_bfs .> 0+e)
+        N  = findall(initial_bfs .<= 0+e)
+    end
+    xn = initial_bfs[N]; xb = initial_bfs[B];
+
+    Ab = A[:,B]; An = A[:,N]; cb = c[B]; cn = c[N]
+    p  = inv(Ab)*b
+    Q  = -inv(Ab)*An
+    r  = (cb'*Q + cn')'
+    if all(r.<= 0+e)
+        return 1
+    else
+        return 0
+    end
+end
+
+
+"""
+checkKKT(c,A,b,x)
+Given a point x, it checks whether this  point is KKT. The problem
+must be in the standard Circus format (e.i: Ax<=b).
+Note that this does not work if the vertex is degenerate (more active restrictions
+than dimensions for the variable x).
+"""
+function checkKKT(c,A,b,x)
+    c = -c
+    initial_bfs = x
+    e  = 10^-7
+    I  = findall(b-A*x.<= 0+e)
+    N  = findall(b-A*x .> 0+e)
+    Ai = A[I,:]; An = A[N,:];
+    μ  = inv(Ai')*c
+    if all(μ .>= 0-e)
+        return 1
+    else
+        return 0
+    end
+    # Not necessary to check that Ai*xi - bi = 0,
+    # because this is true for the active restrictions
+end
