@@ -71,6 +71,30 @@ function finddirection(x, A, b, Anormed,cnormed, num_var, sortedJ)
 end
 
 """
+    findDirection(x, A, b, Anormed,cnormed)
+Find the circumcentered direction given the active indexes.
+
+"""
+function findDirection(x, A, b, Anormed,cnormed, num_var, sortedJ, index_active)
+    # Find the Opposite to Circumcenter direction
+    # Finds indexes J such that b-Ax < ϵ
+    J = index_active
+    lenJ = length(J)
+    # If x is interior, takes direction -c
+    if isempty(J)
+        return -cnormed
+    end
+    if lenJ == length(x)
+        X = Anormed[J,:]'
+        xcirc = FindCircumcenter(X)
+    else
+        X = Matrix([cnormed (Anormed[J,:])'])
+        xcirc = FindCircumcenter(X)
+    end
+    return -xcirc
+end
+
+"""
     refinesolution(x, A, b, c, num_var, atol=1e-8)
 Refine solution when near the LP solution
 
