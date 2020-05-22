@@ -47,7 +47,7 @@ end
 
 """
     finddirection(x, A, b, Anormed,cnormed)
-Finds Barycenteric direction
+Finds Barycenteric directi
 
 """
 function finddirection(x, A, b, Anormed,cnormed, num_var, sortedJ)
@@ -99,7 +99,7 @@ function refinesolution(x, A, b, c, num_var,atol=1e-8)
            return xnew
        end
        x = xnew
-       index_active = findall(b - A*x .<  1e-8)
+       index_active = findall(b - A*x .<  atol)
        num_active = length(index_active)
     end
     return x
@@ -267,6 +267,62 @@ On the linear convergence of the circumcentered-reflection method. Oper. Res. Le
         return CC
     end
 
+"""
+FindCircumcenter(X)
+
+Finds the Circumcenter of vectors ``x_0,x_1,…,x_m``, columns of matrix ``X``,
+as described in [^Behling2018a] and [^Behling2018b].
+The only difference to FindCircumcentermSet is the input type.
+For FindCircumcenterSet, the input is, for example, X = [[1,2,3],[1,0,0],[0,1,0]] <Array of Arrays>
+For FindCircumcenter, the input is, for example,    X = [1 1 0; 2 0 1; 3 0 0]     < Matrix  with vectors as columns>
+
+[^Behling2018]: Behling, R., Bello Cruz, J.Y., Santos, L.-R.:
+Circumcentering the Douglas–Rachford method. Numer. Algorithms. 78(3), 759–776 (2018).
+[doi:10.1007/s11075-017-0399-5](https://doi.org/10.1007/s11075-017-0399-5)
+[^Behling2018]: Behling, R., Bello Cruz, J.Y., Santos, L.-R.:
+On the linear convergence of the circumcentered-reflection method. Oper. Res. Lett. 46(2), 159-162 (2018).
+[doi:10.1016/j.orl.2017.11.018](https://doi.org/10.1016/j.orl.2017.11.018)
+
+"""
+
+function FindCircumcenter(X)
+    # Finds the Circumcenter of points X = [X1, X2, X3, ... Xn], where each
+    # column is Xi
+        # println(typeof(X))
+        lengthX = size(X)[1]
+        if lengthX  == 1
+            return X[:,1]
+        elseif lengthX == 2
+            return .5*(X[:,1] + X[:,2])
+        end
+        V = []
+        b = Float64[]
+        # Forms V = [X[2] - X[1] ... X[n]-X[1]]
+        # and b = [dot(V[1],V[1]) ... dot(V[n-1],V[n-1])]
+        for ind in 2:lengthX
+            difXnX1 = X[:,ind]-X[:,1]
+            push!(V,difXnX1)
+            push!(b,dot(difXnX1,difXnX1))
+        end
+
+       # Forms Gram Matrix
+        dimG = lengthX-1
+        G = diagm(b)
+
+        for irow in 1:(dimG-1)
+            for icol in  (irow+1):dimG
+                G[irow,icol] = dot(V[irow],V[icol])
+                G[icol,irow] = G[irow,icol]
+            end
+        end
+        # Can we make this solution faster, or better?
+        y = cholesky(G)\b
+        CC = X[:,1]
+        for ind in 1:dimG
+            CC += .5*y[ind]*V[ind]
+        end
+        return CC
+end
 
 
 """
