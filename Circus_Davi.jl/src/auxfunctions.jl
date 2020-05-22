@@ -75,7 +75,7 @@ end
 Find the circumcentered direction given the active indexes.
 
 """
-function findDirection(x, A, b, Anormed,cnormed, num_var, sortedJ, index_active)
+function findDirection(x, A, b, Anormed,cnormed, index_active)
     # Find the Opposite to Circumcenter direction
     # Finds indexes J such that b-Ax < ϵ
     J = index_active
