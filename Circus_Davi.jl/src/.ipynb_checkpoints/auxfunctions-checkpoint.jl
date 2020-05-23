@@ -313,7 +313,7 @@ function FindCircumcenter(X)
     # Finds the Circumcenter of points X = [X1, X2, X3, ... Xn], where each
     # column is Xi
         # println(typeof(X))
-        lengthX = size(X)[1]
+        lengthX = size(X)[2]
         if lengthX  == 1
             return X[:,1]
         elseif lengthX == 2
